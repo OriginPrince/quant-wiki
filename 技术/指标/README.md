@@ -2,7 +2,9 @@
 
 这里是一些常见的技术指标。
 
-这些指标不能单独使用，可以用于组成策略，或者用作模型的特征。
+这些指标用于组成策略，或者用作模型的特征。
+
+> 注：如果没有特殊说明，输入默认为收盘价。
 
 ## SMA（简单移动平均）
 
@@ -96,4 +98,76 @@ def rsi(arr, wnd):
     roc1 = roc(arr, 1)
     return sma(np.fmax(roc1, 0), wnd - 1) / \
            sma(np.abs(roc1), wnd - 1)
+```
+
+## KDJ
+
+首先计算 RSV，其中`c(t)`为收盘价，`l(t)`为最低价，`h(t)`为最高价。
+
+$RSV(t) = \frac{c(t) - l(t)}{h(t) - l(t)}$
+
+然后计算 K 和 D 值。
+
+$K(t) = \frac{2}{3}K(t-1)+\frac{1}{3}RSV(t)$
+
+$D(t) = \frac{2}{3}D(t-1)+\frac{1}{3}K(t)$
+
+$K(1) = D(1) = 50$
+
+最后计算 J 值。
+
+$J(t) = 3K(t) - 2D(t)$
+
+```py
+def kdj(h, l, c):
+    assert len(h) == len(l) and \
+           len(l) == len(c)
+           
+    rsv = (c - l) / (h - l)
+    
+    k = np.zeros_like(rsv)
+    k[0] = 50
+    for i in range(1, len(k)):
+        k[i] = 2/3 * k[i - 1] + 1/3 * rsv[i]
+        
+    d = np.zeros_like(k)
+    d[0] = 50
+    for i in range(1, len(d)):
+        d[i] = 2/3 * d[i - 1] + 1/3 * k[i]
+
+    j = 3 * k - 2 * d
+    return k, d, j
+```
+
+## CCI（顺势指标）
+
+$TP(t) = \frac{h(t) + l(t) + c(t)}{3}$
+
+$CCI(t,n) = \frac{TP(t) - SMA(t,n)}{0.015MSD(t,n)}$
+
+```py
+def cci(h, l, c, wnd):
+    assert len(h) == len(l) and \
+           len(l) == len(c)
+    
+    tp = (h + l + c) / 3
+    tp = tp[wnd-1:]
+    
+    sma_n = sma(c, n)
+    msd_n = msd(c, n)
+    
+    return (tp - sma) / (0.015 * msd)
+```
+
+## MACD（移动平均聚散指标）
+
+$DIF(t) = EMA(t, 12) - EMA(t, 26)$
+
+$DEA(t) = EMA(DIF(t), 9)$
+
+```py
+def macd(arr):
+    dif = ema(arr, 12) - ema(arr, 26)
+    dea = ema(dif, 9)
+    return dif, dea
 ```
